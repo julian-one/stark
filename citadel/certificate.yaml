@@ -1,0 +1,14 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: citadel-tls
+  namespace: industries
+spec:
+  secretName: citadel-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: api.jroberts.info
+  dnsNames:
+    - api.jroberts.info

@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shire
+  namespace: industries
+  labels:
+    app: shire
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shire
+  template:
+    metadata:
+      labels:
+        app: shire
+    spec:
+      containers:
+        - name: shire
+          image: julianone/shire:latest
+          ports:
+            - containerPort: 3000
+          imagePullPolicy: Always
+          env:
+            - name: PUBLIC_CITADEL_API_URL
+              value: https://api.jroberts.info
