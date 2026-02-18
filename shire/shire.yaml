@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shire
+  namespace: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shire
+  template:
+    metadata:
+      labels:
+        app: shire
+    spec:
+      containers:
+        - name: shire
+          image: julianone/shire:20260830-201240
+          ports:
+            - containerPort: 3000
+          env:
+            - name: MORIA_API_URL
+              value: http://moria
+            - name: ORIGIN
+              value: https://julian-one.com
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shire
+  namespace: web
+spec:
+  selector:
+    app: shire
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shire
+  namespace: web
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: web-redirect-https@kubernetescrd,web-hsts@kubernetescrd
+spec:
+  rules:
+    - host: julian-one.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shire
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - julian-one.com
+      secretName: julian-one-tls

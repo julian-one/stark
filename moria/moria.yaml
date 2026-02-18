@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moria
+  namespace: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moria
+  template:
+    metadata:
+      labels:
+        app: moria
+    spec:
+      containers:
+        - name: moria
+          image: julianone/moria:20260830-201152
+          ports:
+            - containerPort: 8081
+          env:
+            - name: MORIA_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: moria-database
+                  key: database-url
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moria
+  namespace: web
+spec:
+  selector:
+    app: moria
+  ports:
+    - port: 80
+      targetPort: 8081
