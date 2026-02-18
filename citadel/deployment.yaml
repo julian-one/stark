@@ -22,3 +22,17 @@ spec:
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
+          volumeMounts:
+            - name: citadel-data
+              mountPath: /app/data
+            - name: citadel-config
+              mountPath: /app/config.json
+              subPath: config.json
+      volumes:
+        - name: citadel-data
+          hostPath:
+            path: /data/citadel
+            type: DirectoryOrCreate
+        - name: citadel-config
+          configMap:
+            name: citadel-config
