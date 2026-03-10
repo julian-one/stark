@@ -25,3 +25,7 @@ spec:
           env:
             - name: PUBLIC_CITADEL_API_URL
               value: https://api.jroberts.info
+            - name: ADDRESS_HEADER
+              value: X-Forwarded-For
+            - name: XFF_DEPTH
+              value: "1"
