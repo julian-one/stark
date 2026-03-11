@@ -1,0 +1,33 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: citadel-db-backup
+  namespace: industries
+spec:
+  schedule: "0 4 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: alpine:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  apk add --no-cache sqlite
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  mkdir -p /data/backups
+                  sqlite3 /data/citadel.db ".backup '/data/backups/citadel-${TIMESTAMP}.db'"
+                  ls -t /data/backups/citadel-*.db | tail -n +8 | xargs -r rm
+              volumeMounts:
+                - name: citadel-data
+                  mountPath: /data
+          volumes:
+            - name: citadel-data
+              hostPath:
+                path: /data/citadel
+                type: Directory
