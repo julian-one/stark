@@ -24,7 +24,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: PUBLIC_CITADEL_API_URL
-              value: https://api.jroberts.info
+              value: https://api.julian-one.com
             - name: ADDRESS_HEADER
               value: X-Forwarded-For
             - name: XFF_DEPTH

@@ -9,6 +9,6 @@ spec:
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  commonName: api.jroberts.info
+  commonName: api.julian-one.com
   dnsNames:
-    - api.jroberts.info
+    - api.julian-one.com

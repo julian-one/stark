@@ -2,7 +2,7 @@
 
 > "Good evening, sir."
 
-Kubernetes manifests for **jroberts.info**, running on a Raspberry Pi 4 (Jarvis) with k3s.
+Kubernetes manifests for **julian-one.com**, running on a Raspberry Pi 4 (Jarvis) with k3s.
 
 ## Suit Up
 
