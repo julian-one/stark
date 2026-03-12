@@ -16,6 +16,7 @@ spec:
       labels:
         app: citadel
     spec:
+      serviceAccountName: citadel
       containers:
         - name: citadel
           image: julianone/citadel:latest
