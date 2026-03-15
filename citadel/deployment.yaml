@@ -17,6 +17,8 @@ spec:
         app: citadel
     spec:
       serviceAccountName: citadel
+      nodeSelector:
+        kubernetes.io/hostname: jarvis
       containers:
         - name: citadel
           image: julianone/citadel:latest
