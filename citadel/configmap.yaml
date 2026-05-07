@@ -13,5 +13,8 @@ data:
       },
       "server": {
         "port": "8080"
+      },
+      "alpaca": {
+        "endpoint": "https://paper-api.alpaca.markets/v2"
       }
     }

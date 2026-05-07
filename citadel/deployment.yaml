@@ -41,6 +41,16 @@ spec:
                 secretKeyRef:
                   name: citadel-secrets
                   key: HMAC_SIGNING_KEY
+            - name: ALPACA_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: citadel-secrets
+                  key: ALPACA_SECRET
+            - name: ALPACA_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: citadel-secrets
+                  key: ALPACA_KEY
           volumeMounts:
             - name: citadel-data
               mountPath: /app/data
