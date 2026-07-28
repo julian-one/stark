@@ -31,13 +31,3 @@ spec:
               value: X-Forwarded-For
             - name: XFF_DEPTH
               value: "1"
-            - name: GRAFANA_USER
-              valueFrom:
-                secretKeyRef:
-                  name: shire-secrets
-                  key: GRAFANA_USER
-            - name: GRAFANA_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: shire-secrets
-                  key: GRAFANA_PASSWORD
