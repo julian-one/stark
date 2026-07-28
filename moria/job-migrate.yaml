@@ -1,0 +1,175 @@
+---
+# One-off migration: move users + sessions out of citadel.db into moria.db
+# and rebuild citadel's domain tables without their users foreign keys.
+#
+# RUN ONLY WITH citadel AND moria SCALED TO 0 REPLICAS. Delete this Job after
+# a successful cutover.
+#
+# The rebuild runs with foreign_keys OFF on purpose: with FK enforcement ON,
+# `DROP TABLE users` performs an implicit DELETE that would CASCADE-wipe
+# posts, recipes, bookmarks, and reviews.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: moria-db-migrate
+  namespace: industries
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: jarvis
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: alpine:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache sqlite
+
+              # 1. Safety backup, named OUTSIDE the citadel-*.db glob so the
+              #    daily backup cleanup never deletes it.
+              mkdir -p /citadel/backups
+              sqlite3 /citadel/citadel.db ".backup '/citadel/backups/pre-moria-citadel.db'"
+
+              # Record pre-existing FK violations: the post-migration check
+              # below should report the SAME set, not necessarily an empty one.
+              echo "--- foreign_key_check BEFORE ---"
+              sqlite3 /citadel/citadel.db "PRAGMA foreign_key_check;"
+
+              # 2. Copy users + sessions into moria.db
+              sqlite3 /citadel/citadel.db <<'EOF'
+              ATTACH DATABASE '/moria/moria.db' AS moria;
+
+              CREATE TABLE IF NOT EXISTS moria.users (
+                user_id TEXT PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                salt BLOB NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+              );
+
+              CREATE TABLE IF NOT EXISTS moria.sessions (
+                session_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+              );
+
+              INSERT INTO moria.users SELECT * FROM main.users;
+              INSERT INTO moria.sessions SELECT * FROM main.sessions;
+              DETACH DATABASE moria;
+              EOF
+
+              # 3. Rebuild domain tables without the users FK, then drop
+              #    users/sessions. FK stays OFF for this whole session; the
+              #    *_new tables are renamed back to their ORIGINAL names so
+              #    textual REFERENCES clauses in other tables stay valid.
+              sqlite3 /citadel/citadel.db <<'EOF'
+              PRAGMA foreign_keys=OFF;
+              BEGIN IMMEDIATE;
+
+              CREATE TABLE posts_new (
+                post_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                public BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                deleted_at DATETIME
+              );
+              INSERT INTO posts_new SELECT * FROM posts;
+              DROP TABLE posts;
+              ALTER TABLE posts_new RENAME TO posts;
+
+              CREATE TABLE recipes_new (
+                recipe_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                photo_url TEXT,
+                source_type TEXT,
+                source TEXT,
+                prep_time INTEGER,
+                cook_time INTEGER,
+                serves INTEGER,
+                cuisine TEXT,
+                category TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                deleted_at DATETIME
+              );
+              INSERT INTO recipes_new SELECT * FROM recipes;
+              DROP TABLE recipes;
+              ALTER TABLE recipes_new RENAME TO recipes;
+
+              CREATE TABLE recipe_bookmarks_new (
+                bookmark_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                recipe_id TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id) ON DELETE CASCADE,
+                UNIQUE (user_id, recipe_id)
+              );
+              INSERT INTO recipe_bookmarks_new SELECT * FROM recipe_bookmarks;
+              DROP TABLE recipe_bookmarks;
+              ALTER TABLE recipe_bookmarks_new RENAME TO recipe_bookmarks;
+
+              CREATE TABLE recipe_reviews_new (
+                review_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                recipe_id TEXT NOT NULL,
+                rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                difficulty INTEGER CHECK (difficulty >= 1 AND difficulty <= 5),
+                duration INTEGER,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id) ON DELETE CASCADE
+              );
+              INSERT INTO recipe_reviews_new SELECT * FROM recipe_reviews;
+              DROP TABLE recipe_reviews;
+              ALTER TABLE recipe_reviews_new RENAME TO recipe_reviews;
+              CREATE UNIQUE INDEX idx_recipe_reviews_user_recipe_day
+              ON recipe_reviews (user_id, recipe_id, date(created_at));
+
+              DROP TABLE sessions;
+              DROP TABLE users;
+
+              COMMIT;
+              EOF
+
+              echo "--- foreign_key_check AFTER (compare with BEFORE) ---"
+              sqlite3 /citadel/citadel.db "PRAGMA foreign_key_check;"
+              echo "--- integrity_check ---"
+              sqlite3 /citadel/citadel.db "PRAGMA integrity_check;"
+
+              # 4. Verify counts
+              echo "moria users:      $(sqlite3 /moria/moria.db 'SELECT COUNT(*) FROM users')"
+              echo "moria sessions:   $(sqlite3 /moria/moria.db 'SELECT COUNT(*) FROM sessions')"
+              echo "citadel posts:    $(sqlite3 /citadel/citadel.db 'SELECT COUNT(*) FROM posts')"
+              echo "citadel recipes:  $(sqlite3 /citadel/citadel.db 'SELECT COUNT(*) FROM recipes')"
+              echo "citadel bookmarks:$(sqlite3 /citadel/citadel.db 'SELECT COUNT(*) FROM recipe_bookmarks')"
+              echo "citadel reviews:  $(sqlite3 /citadel/citadel.db 'SELECT COUNT(*) FROM recipe_reviews')"
+              echo "migration complete"
+          volumeMounts:
+            - name: citadel-data
+              mountPath: /citadel
+            - name: moria-data
+              mountPath: /moria
+      volumes:
+        - name: citadel-data
+          hostPath:
+            path: /data/citadel
+            type: Directory
+        - name: moria-data
+          hostPath:
+            path: /data/moria
+            type: DirectoryOrCreate

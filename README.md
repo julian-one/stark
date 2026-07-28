@@ -11,9 +11,14 @@ Apply in order — faceplate goes on last.
 ```
 kubectl apply -f namespace.yaml
 kubectl apply -f cert-manager/
+kubectl apply -f moria/
 kubectl apply -f citadel/
 kubectl apply -f shire/
 ```
+
+Note: `moria/job-migrate.yaml` is a one-off users/sessions migration Job —
+run it only during the auth cutover with citadel and moria scaled to 0, and
+delete it afterwards.
 
 ### Run a Diagnostic
 

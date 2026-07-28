@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moria
+  namespace: industries
+spec:
+  selector:
+    app: moria
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8081
+    # Cluster-internal session validation; never routed through the ingress.
+    - name: internal
+      protocol: TCP
+      port: 8082
+      targetPort: 8082

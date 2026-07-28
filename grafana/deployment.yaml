@@ -25,10 +25,19 @@ spec:
             - containerPort: 3000
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: admin
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secrets
+                  key: admin-password
           volumeMounts:
             - name: grafana-datasources
               mountPath: /etc/grafana/provisioning/datasources/
+            - name: grafana-dashboards-provider
+              mountPath: /etc/grafana/provisioning/dashboards/
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards/
+            - name: grafana-alerting
+              mountPath: /etc/grafana/provisioning/alerting/
           resources:
             requests:
               memory: 64Mi
@@ -40,3 +49,12 @@ spec:
         - name: grafana-datasources
           configMap:
             name: grafana-datasources
+        - name: grafana-dashboards-provider
+          configMap:
+            name: grafana-dashboards-provider
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+        - name: grafana-alerting
+          configMap:
+            name: grafana-alerting

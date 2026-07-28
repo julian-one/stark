@@ -30,3 +30,33 @@ roleRef:
   kind: Role
   name: citadel-log-reader
   apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: citadel-cluster-reader
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: citadel-cluster-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: citadel
+    namespace: industries
+roleRef:
+  kind: ClusterRole
+  name: citadel-cluster-reader
+  apiGroup: rbac.authorization.k8s.io
