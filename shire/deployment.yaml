@@ -16,6 +16,7 @@ spec:
       labels:
         app: shire
     spec:
+      enableServiceLinks: false
       containers:
         - name: shire
           image: julianone/shire:latest
@@ -23,11 +24,15 @@ spec:
             - containerPort: 3000
           imagePullPolicy: Always
           env:
-            - name: PUBLIC_CITADEL_API_URL
-              value: https://api.julian-one.com
-            - name: PUBLIC_MORIA_API_URL
-              value: https://auth.julian-one.com
-            - name: ADDRESS_HEADER
-              value: X-Forwarded-For
-            - name: XFF_DEPTH
-              value: "1"
+            - name: MORIA_API_URL
+              value: http://moria.industries.svc.cluster.local
+            - name: ORIGIN
+              value: https://julian-one.com
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000

@@ -13,8 +13,3 @@ spec:
       protocol: TCP
       port: 80
       targetPort: 8081
-    # Cluster-internal session validation; never routed through the ingress.
-    - name: internal
-      protocol: TCP
-      port: 8082
-      targetPort: 8082

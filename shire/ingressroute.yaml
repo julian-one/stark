@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: shire
+  namespace: industries
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`julian-one.com`)
+      kind: Rule
+      services:
+        - name: shire
+          port: 80
+  tls:
+    certResolver: letsencrypt
