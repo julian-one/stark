@@ -7,9 +7,6 @@ metadata:
 spec:
   selector:
     app: moria
-  type: ClusterIP
   ports:
-    - name: http
-      protocol: TCP
-      port: 80
+    - port: 80
       targetPort: 8081

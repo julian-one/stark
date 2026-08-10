@@ -4,10 +4,7 @@ kind: Deployment
 metadata:
   name: shire
   namespace: industries
-  labels:
-    app: shire
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: shire
@@ -16,23 +13,15 @@ spec:
       labels:
         app: shire
     spec:
-      enableServiceLinks: false
       containers:
         - name: shire
           image: julianone/shire:latest
-          ports:
-            - containerPort: 3000
-          imagePullPolicy: Always
           env:
             - name: MORIA_API_URL
               value: http://moria.industries.svc.cluster.local
             - name: ORIGIN
               value: https://julian-one.com
           readinessProbe:
-            httpGet:
-              path: /
-              port: 3000
-          livenessProbe:
             httpGet:
               path: /
               port: 3000
