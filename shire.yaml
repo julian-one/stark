@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shire
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shire
+  template:
+    metadata:
+      labels:
+        app: shire
+    spec:
+      containers:
+        - name: shire
+          image: julianone/shire:latest
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 3
+            timeoutSeconds: 3
+          env:
+            - name: MORIA_API_URL
+              value: http://moria
+            - name: RIVENDELL_API_URL
+              value: http://rivendell
+            - name: ORIGIN
+              value: https://julian-one.com
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shire
+spec:
+  selector:
+    app: shire
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shire
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  rules:
+    - host: julian-one.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shire
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - julian-one.com
+      secretName: julian-one-tls

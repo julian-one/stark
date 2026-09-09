@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moria
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: moria
+  template:
+    metadata:
+      labels:
+        app: moria
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: moria
+          image: julianone/moria:latest
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+          env:
+            - name: MORIA_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: moria-database
+                  key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moria
+spec:
+  selector:
+    app: moria
+  ports:
+    - port: 80
+      targetPort: 8080
